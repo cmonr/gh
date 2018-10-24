@@ -1,0 +1,39 @@
+#!/bin/bash -euf
+
+set -o pipefail
+
+header=$(cat ${1:-/dev/stdin})
+
+rate_limits=$(
+  echo "${header}" \
+    | tr '\r' '\n' \
+    | rg "^X-RateLimit"
+  )
+
+# Example data:
+#  X-RateLimit-Limit: 60
+#  X-RateLimit-Remaining: 42
+#  X-RateLimit-Reset: 1539821653
+
+
+req_remaining=$(
+  echo "${rate_limits}" \
+    | rg "X-RateLimit-Remaining" \
+    | cut -d' ' -f2
+  )
+req_limit=$(
+  echo "${rate_limits}" \
+    | rg "X-RateLimit-Limit" \
+    | cut -d' ' -f2
+  )
+
+req_reset_on=$(
+  echo "${rate_limits}" \
+    | rg "X-RateLimit-Reset" \
+    | cut -d' ' -f2
+  )
+
+secs_until_req_reset=$(( ${req_reset_on} - $(date +%s) ))
+time_until_req_reset=$(date -d "@${secs_until_req_reset}" -u "+%H:%M:%S")
+
+echo "${req_remaining}/${req_limit} T-${time_until_req_reset}"
