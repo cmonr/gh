@@ -1,0 +1,55 @@
+#!/bin/bash -euf
+
+set -o pipefail
+
+readonly url="${1}"
+
+function die()
+{
+  echo "Error. ${1}"
+  exit 1
+}
+
+function urlencode()
+{
+  echo "${1}" \
+    | sed -e 's/ /%20/g' \
+          -e 's/!/%21/g' \
+          -e 's/#/%23/g' \
+          -e 's/\$/%24/g' \
+          -e "s/'/%27/g" \
+          -e 's/(/%28/g' \
+          -e 's/)/%29/g'
+}
+
+token=$(
+  cat ~/.netrc \
+    | tr '\n' ' ' \
+    | tr -s ' ' \
+    | rg "machine github.com" \
+    | cut -d' ' -f6 \
+    || die "Could not find GitHub token."
+  )
+
+resp=$(
+  curl --silent --location --include \
+    --header "Authorization: token ${token}" \
+    "$(urlencode "https://api.github.com${url}")" \
+    || die "Improper request."
+  )
+
+split=$(
+  echo "${resp}" \
+    | rg --line-number '^\r$' \
+    | cut -d':' -f1 \
+    || die "Could not isolate header from response."
+  )
+
+header=$(echo "${resp}" | sed -n "1,${split}p")
+content=$(echo "${resp}" | tail -n +$(( ${split} + 1 )) )
+
+# Output data,
+echo "${content}"
+
+# and print reqeust stats to stderr
+#./gh-reqs-left <(echo "${header}") 1>&2
