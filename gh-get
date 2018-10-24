@@ -31,6 +31,7 @@ token=$(
     || die "Could not find GitHub token."
   )
 
+
 resp=$(
   curl --silent --location --include \
     --header "Authorization: token ${token}" \
@@ -38,18 +39,13 @@ resp=$(
     || die "Improper request."
   )
 
-split=$(
-  echo "${resp}" \
-    | rg --line-number '^\r$' \
-    | cut -d':' -f1 \
-    || die "Could not isolate header from response."
-  )
 
-header=$(echo "${resp}" | sed -n "1,${split}p")
-content=$(echo "${resp}" | tail -n +$(( ${split} + 1 )) )
+header=$(echo "${resp}" | sed -n -e '/^{/,$ !p')
+content=$(echo "${resp}" | sed -n -e '/^{/,$ p')
 
 # Output data,
 echo "${content}"
+#echo "${header}"
 
 # and print reqeust stats to stderr
-#./gh-reqs-left <(echo "${header}") 1>&2
+gh-reqs-left <(echo "${header}") 1>&2
