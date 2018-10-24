@@ -1,0 +1,52 @@
+#!/bin/bash -euf
+
+set -o pipefail
+
+readonly action="${1}"
+readonly url="${2}"
+readonly payload_file="${3:-}"
+
+function die()
+{
+  echo "${1}"
+  exit 1
+}
+
+function urlencode()
+{
+  echo "${1}" \
+    | sed -e 's/ /%20/g' \
+          -e 's/!/%21/g' \
+          -e 's/#/%23/g' \
+          -e 's/\$/%24/g' \
+          -e "s/'/%27/g" \
+          -e 's/(/%28/g' \
+          -e 's/)/%29/g'
+}
+
+case "${action}" in
+  get | delete)
+    ;;
+  post )
+    [[ -z "${payload_file}" ]] && die "No post data file provided."
+    ;;
+  *)
+    die "Invalid action."
+esac
+
+
+token=$(
+  cat ~/.netrc \
+    | tr '\n' ' ' \
+    | tr -s ' ' \
+    | rg "machine github.com" \
+    | cut -d' ' -f6 \
+    || die "Could not source GitHub token."
+  )
+
+
+curl --silent --request $(echo "${action}" | tr '[:lower:]' '[:upper:]') \
+  --header "Authorization: token ${token}" \
+  --header "Content-Type: application/json" \
+  --data @${payload_file} \
+  --url $(urlencode "https://api.github.com${url}") 
