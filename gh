@@ -63,9 +63,9 @@ token=$(
 
 
 case "${action}" in
-  get | delete)
+  get | delete )
     ;;
-  post )
+  post | patch )
     [[ -z "${payload_file}" ]] && die "No post data file provided."
     ;;
   limits )
