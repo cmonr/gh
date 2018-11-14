@@ -2,41 +2,14 @@
 
 set -o pipefail
 
-readonly action="${1}"
-readonly url="${2:-}"
+readonly requested_action="${1}"
+readonly requested_url="${2:-}"
 readonly payload_file="${3:-}"
 
 function die()
 {
   echo "${1}"
   exit 1
-}
-
-function print_limits()
-{
-
-  headers=$(
-    curl --silent --head \
-      --header "Authorization: token ${token}" \
-      https://api.github.com/rate_limit \
-      | tr -d '\r' 
-    )
-
-  # Example data:
-  #  X-RateLimit-Limit: 60
-  #  X-RateLimit-Remaining: 42
-  #  X-RateLimit-Reset: 1539821653
-
-  limit=$(echo "${headers}" | rg "^X-RateLimit-Limit" | cut -d' ' -f2)
-  remaining=$(echo "${headers}" | rg "^X-RateLimit-Remaining" | cut -d' ' -f2)
-
-  reset_on=$(echo "${headers}" | rg "^X-RateLimit-Reset" | cut -d' ' -f2)
-
-  secs_until_reset=$(( ${reset_on} - $(date +%s) ))
-  time_until_reset=$(date -d @${secs_until_reset} -u "+%H:%M:%S")
-
-  echo "${remaining}/${limit} T-${time_until_reset}"
-
 }
 
 function urlencode()
@@ -61,17 +34,18 @@ token=$(
     || die "Could not source GitHub token."
   )
 
+action=${requested_action}
+url=${requested_url}
 
 case "${action}" in
+  limits )
+    action="get"
+    url="/rate_limit"
+    ;;
   get | delete )
     ;;
   post | patch )
     [[ -z "${payload_file}" ]] && die "No post data file provided."
-    ;;
-  limits )
-    print_limits
-    exit
-
     ;;
   *)
     die "Invalid action."
