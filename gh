@@ -8,7 +8,7 @@ readonly payload_file="${3:-}"
 
 function die()
 {
-  echo "${1}"
+  echo "${1}" 1>&2
   exit 1
 }
 
@@ -54,17 +54,9 @@ esac
 [[ -z "${url}" ]] && die "No url provided."
 
 
-header=""
-{
-  header=$(sed -u '/^\r/Q')
-  
-  cat -
-
-} < <(
-  curl --silent --include \
-    --request $(echo "${action}" | tr '[:lower:]' '[:upper:]') \
-    --header "Authorization: token ${token}" \
-    --header "Content-Type: application/json" \
-    --data @${payload_file} \
-    --url $(urlencode "https://api.github.com${url}") 
-  )
+curl --silent --include \
+  --request $(echo "${action}" | tr '[:lower:]' '[:upper:]') \
+  --header "Authorization: token ${token}" \
+  --header "Content-Type: application/json" \
+  --data @${payload_file} \
+  --url $(urlencode "https://api.github.com${url}") 
