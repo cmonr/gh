@@ -80,8 +80,17 @@ esac
 [[ -z "${url}" ]] && die "No url provided."
 
 
-curl --silent --request $(echo "${action}" | tr '[:lower:]' '[:upper:]') \
-  --header "Authorization: token ${token}" \
-  --header "Content-Type: application/json" \
-  --data @${payload_file} \
-  --url $(urlencode "https://api.github.com${url}") 
+header=""
+{
+  header=$(sed -u '/^\r/Q')
+  
+  cat -
+
+} < <(
+  curl --silent --include \
+    --request $(echo "${action}" | tr '[:lower:]' '[:upper:]') \
+    --header "Authorization: token ${token}" \
+    --header "Content-Type: application/json" \
+    --data @${payload_file} \
+    --url $(urlencode "https://api.github.com${url}") 
+  )
