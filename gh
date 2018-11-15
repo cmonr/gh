@@ -32,6 +32,7 @@ Interact with GitHub's API using curl.
     Displays current rate-limit statistics.
   -h --help
     Displays this help
+
 EOF
 
   exit ${1:-0}
