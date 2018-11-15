@@ -2,9 +2,40 @@
 
 set -o pipefail
 
-readonly requested_action="${1}"
-readonly requested_url="${2:-}"
-readonly payload_file="${3:-}"
+readonly self_name=${0##*/}
+
+function usage()
+{
+  
+  cat <<EOF
+Usage:
+  ${self_name} [options] action url [payload]
+  ${self_name} [options] --stats
+  ${self_name} --help
+
+Interact with GitHub's API using curl.
+
+  action
+    The type of action to perform on a URL.
+    Supported actions include: GET, POST, PATCH, DELETE.
+
+  url
+    The GitHub API url to perform a request on.
+
+  [payload]
+    The json payload used when performing a POST or DELETE <action>.
+    Should not be provided with any other <action>.
+
+  -i --include-headers
+    Prints received headers and content.
+  -s --stats
+    Displays current rate-limit statistics.
+  -h --help
+    Displays this help
+EOF
+
+  exit ${1:-0}
+}
 
 function die()
 {
@@ -24,6 +55,7 @@ function urlencode()
 }
 
 
+# Source GitHub token from ~/.netrc
 token=$(
   cat ~/.netrc \
     | tr '\n' ' ' \
@@ -33,29 +65,83 @@ token=$(
     || die "Could not source GitHub token."
   )
 
-action=${requested_action}
-url=${requested_url}
 
+# Set variables
+action=""; 
+url=""
+payload=""
+
+curl_header_flag=""
+fetch_stats=false
+
+
+# Parse user parameters
+for arg in "$@"; do
+  case "${arg}" in
+    --help | -h )
+      usage
+      ;;
+
+    --include-headers | -i )
+      curl_header_flag="--include"
+      ;;
+
+    --stats | -s )
+      fetch_stats=true
+      ;;
+
+    --* | -* )
+      die "Invalid argument: ${arg}"
+      ;;
+
+    *)
+      if [[ -z "${action}" ]]; then
+        action="${arg}"
+      elif [[ -z "${url}" ]]; then
+        url="${arg}"
+      elif [[ -z "${payload}" ]]; then
+        payload="${arg}"
+      else
+        die "Extra argument: ${arg}"
+      fi
+      ;;
+  esac
+done
+
+# Only fetch stats if no other action is specified.
+if ${fetch_stats} ; then
+  [[ ! -z "${action}" ]] && usage 1
+
+  action="get"
+  url="/rate_limit"
+fi
+
+
+# Verify key parameters are not empty
+[[ -z "${url}" ]] && die "Url not provided"
+[[ -z "${action}" ]] && die "Action not provided"
+
+# Validate action/payload combinations
 case "${action}" in
-  limits )
-    action="get"
-    url="/rate_limit"
-    ;;
   get | delete )
+    [[ ! -z "${payload}" ]] && die "Payload not used with ${action}: '${payload}'"
     ;;
   post | patch )
-    [[ -z "${payload_file}" ]] && die "No post data file provided."
+    [[ -z "${payload}" ]] && die "Payload for ${action} not provided"
     ;;
   *)
-    die "Invalid action."
+    die "Unknown action: ${action}"
 esac
 
-[[ -z "${url}" ]] && die "No url provided."
+# Normalize variables
+action=$(tr '[:lower:]' '[:upper:]' <<< "${action}")
+url=$(sed 's_.*github.com/_/_' <<< "${url}")
 
 
-curl --silent --include \
-  --request $(echo "${action}" | tr '[:lower:]' '[:upper:]') \
+# Do the thing
+curl --silent ${curl_header_flag} \
+  --request ${action} \
   --header "Authorization: token ${token}" \
   --header "Content-Type: application/json" \
-  --data @${payload_file} \
+  --data @${payload} \
   --url $(urlencode "https://api.github.com${url}") 
