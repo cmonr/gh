@@ -36,7 +36,7 @@ Interact with GitHub's API using curl.
 
 EOF
 
-  exit ${1:-0}
+  exit "${1:-0}"
 }
 
 function die()
@@ -59,8 +59,7 @@ function urlencode()
 
 # Source GitHub token from ~/.netrc
 token=$(
-  cat ~/.netrc \
-    | tr '\n' ' ' \
+  tr '\n' ' ' < ~/.netrc \
     | tr -s ' ' \
     | rg "machine github.com" \
     | cut -d' ' -f6 \
@@ -142,8 +141,8 @@ url=$(sed 's_.*github.com/_/_' <<< "${url}")
 
 # Do the thing
 curl --silent ${curl_header_flag} \
-  --request ${action} \
+  --request "${action}" \
   --header "Authorization: token ${token}" \
   --header "Content-Type: application/json" \
-  --data @${payload} \
-  --url $(urlencode "https://api.github.com${url}") 
+  --data "@${payload}" \
+  --url "$(urlencode "https://api.github.com${url}")"
