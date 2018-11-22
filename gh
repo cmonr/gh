@@ -61,7 +61,7 @@ function urlencode()
 token=$(
   tr '\n' ' ' < ~/.netrc \
     | tr -s ' ' \
-    | rg "machine github.com" \
+    | grep "machine github.com" \
     | cut -d' ' -f6 \
     || die "Could not source GitHub token."
   )
