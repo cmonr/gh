@@ -4,6 +4,7 @@
 set -o pipefail
 
 readonly self_name=${0##*/}
+readonly self_version="0.0.1"
 
 function usage()
 {
@@ -12,6 +13,7 @@ function usage()
 Usage:
   ${self_name} [options] action url [payload]
   ${self_name} [options] --stats
+  ${self_name} --version
   ${self_name} --help
 
 Interact with GitHub's API using curl.
@@ -34,9 +36,18 @@ Interact with GitHub's API using curl.
   -h --help
     Displays this help
 
+  --version
+    Prints ${self_name} verison.
+
 EOF
 
   exit "${1:-0}"
+}
+
+function version()
+{
+  printf "${self_name} ${self_version}\r\n"
+  exit 0
 }
 
 function die()
@@ -81,6 +92,10 @@ for arg in "$@"; do
   case "${arg}" in
     --help | -h )
       usage
+      ;;
+
+    --version )
+      version
       ;;
 
     --include-headers | -i )
