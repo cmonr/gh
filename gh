@@ -34,7 +34,7 @@ Interact with GitHub's API using curl.
   -s --stats
     Displays current rate-limit statistics.
   -h --help
-    Displays this help
+    Displays this help.
 
   --version
     Prints ${self_name} verison.
@@ -142,11 +142,11 @@ case "${action}" in
   get | delete )
     [[ ! -z "${payload}" ]] && die "Payload not used with ${action}: '${payload}'"
     ;;
-  post | patch )
+  post | patch | put )
     [[ -z "${payload}" ]] && die "Payload for ${action} not provided"
     ;;
   *)
-    die "Unknown action: ${action}"
+    die "Error. Unknown action: ${action}"
 esac
 
 # Normalize variables
