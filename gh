@@ -4,12 +4,12 @@
 set -o pipefail
 
 readonly self_name=${0##*/}
-readonly self_version="0.0.1"
+readonly self_version="0.0.2"
 
-function usage()
+usage()
 {
   
-  cat <<EOF
+  cat - <<EOF
 Usage:
   ${self_name} [options] action url [payload]
   ${self_name} [options] --stats
@@ -17,6 +17,8 @@ Usage:
   ${self_name} --help
 
 Interact with GitHub's API using curl.
+
+Requires a .netrc file for credentials.
 
   action
     The type of action to perform on a URL.
@@ -37,24 +39,21 @@ Interact with GitHub's API using curl.
     Displays this help.
 
   --version
-    Prints ${self_name} verison.
+    Prints ${self_name} version.
+
+Examples:
+  ${self_name} get /user
+  ${self_name} post /repos/:owner/:repo/issues/:issue_number/comments \
+    '{"body": "I am a comment."}'
+  ${self_name} -i --stats
 
 EOF
 
   exit "${1:-0}"
 }
 
-function version()
-{
-  printf "${self_name} ${self_version}\r\n"
-  exit 0
-}
-
-function die()
-{
-  echo "${1}" 1>&2
-  exit 1
-}
+version() { printf "%s\n" "${self_name} ${self_version}"; exit 0; }
+die() { printf "E: %s\n" "${1}" 1>&2; exit ${2:-1}; }
 
 function urlencode()
 {
@@ -66,16 +65,6 @@ function urlencode()
     -e 's/(/%28/g' \
     -e 's/)/%29/g' <<< "${1}"
 }
-
-
-# Source GitHub token from ~/.netrc
-token=$(
-  tr '\n' ' ' < ~/.netrc \
-    | tr -s ' ' \
-    | grep "machine github.com" \
-    | cut -d' ' -f6 \
-    || die "Could not source GitHub token."
-  )
 
 
 # Set variables
@@ -133,9 +122,19 @@ if ${fetch_stats} ; then
 fi
 
 
+# Source GitHub token from ~/.netrc
+token=$(
+  tr '\n' ' ' < ~/.netrc \
+    | tr -s ' ' \
+    | grep "machine github.com" \
+    | cut -d' ' -f6 \
+)
+
 # Verify key parameters are not empty
-[[ -z "${url}" ]] && die "Url not provided"
-[[ -z "${action}" ]] && die "Action not provided"
+[ -z "${url}" ] && die "Url not provided"
+[ -z "${action}" ] && die "Action not provided"
+[ -z "${token}" ] && die "Could not source GitHub token."
+
 
 # Validate action/payload combinations
 case "${action}" in
