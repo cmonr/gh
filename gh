@@ -44,7 +44,7 @@ Requires a .netrc file for credentials.
 
 Examples:
   ${self_name} get /user
-  ${self_name} post /repos/:owner/:repo/issues/:issue_number/comments \
+  ${self_name} post /repos/:owner/:repo/issues/:issue_number/comments
     '{"body": "I am a comment."}'
   ${self_name} -i --stats
 
