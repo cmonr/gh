@@ -8,7 +8,6 @@ readonly self_version="0.0.2"
 
 usage()
 {
-  
   cat - <<EOF
 Usage:
   ${self_name} [options] action url [payload]
@@ -53,9 +52,9 @@ EOF
 }
 
 version() { printf "%s\n" "${self_name} ${self_version}"; exit 0; }
-die() { printf "E: %s\n" "${1}" 1>&2; exit ${2:-1}; }
+die() { printf "[E] %s\n" "${1}" 1>&2; exit 1; }
 
-function urlencode()
+urlencode()
 {
   sed -e 's/ /%20/g' \
     -e 's/!/%21/g' \
@@ -65,7 +64,6 @@ function urlencode()
     -e 's/(/%28/g' \
     -e 's/)/%29/g' <<< "${1}"
 }
-
 
 # Set variables
 action=""; 
@@ -153,7 +151,9 @@ action=$(tr '[:lower:]' '[:upper:]' <<< "${action}")
 url=$(sed 's_.*github.com/_/_' <<< "${url}")
 
 
+#
 # Do the thing
+#
 curl --silent ${curl_header_flag} \
   --request "${action}" \
   --header "Authorization: token ${token}" \
