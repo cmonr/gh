@@ -30,10 +30,10 @@ Requires a .netrc file for credentials.
     The json payload used when performing a POST or DELETE <action>.
     Should not be provided with any other <action>.
 
-  -i --include-headers
-    Prints received headers and content.
   -p --paginate
     Pulls ALL pages returned from the request.
+  -i --include-headers
+    Prints received headers and content.
   -s --stats
     Displays current rate-limit statistics.
   -h --help
@@ -167,10 +167,11 @@ url=$(sed 's_.*github.com/_/_' <<< "${url}")
 #
 # Do the thing
 #
-if ${paginate}; then
-  rm /tmp/gh.*.json &> /dev/null \
-    || true
 
+cleanup() { find '/tmp' -name 'gh.*.json' -exec rm {} \; 2>/dev/null || true; }
+trap cleanup EXIT
+
+if ${paginate}; then
   curl --silent --include \
     --request "${action}" \
     --header "Authorization: token ${token}" \
@@ -219,9 +220,6 @@ if ${paginate}; then
     )"
 
     jq -s '.[]' ${fileList}
-
-    rm /tmp/gh.*.json &> /dev/null \
-      || true
 else
   curl --silent ${curl_header_flag} \
     --request "${action}" \
