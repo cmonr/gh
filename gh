@@ -32,6 +32,8 @@ Requires a .netrc file for credentials.
 
   -i --include-headers
     Prints received headers and content.
+  -p --paginate
+    Pulls ALL pages returned from the request.
   -s --stats
     Displays current rate-limit statistics.
   -h --help
@@ -70,6 +72,7 @@ action="";
 url=""
 payload=""
 
+paginate=false
 curl_header_flag=""
 fetch_stats=false
 
@@ -83,6 +86,10 @@ for arg in "$@"; do
 
     --version )
       version
+      ;;
+
+    --paginate | -p )
+      paginate=true
       ;;
 
     --include-headers | -i )
@@ -117,6 +124,12 @@ if ${fetch_stats} ; then
 
   action="get"
   url="/rate_limit"
+fi
+
+# Pagination consumes headers.
+if ${paginate}; then
+  [[ -z "${curl_header_flag}" ]] \
+    || die "Pagination consumes headers. Invalid flag combination."
 fi
 
 
@@ -154,9 +167,66 @@ url=$(sed 's_.*github.com/_/_' <<< "${url}")
 #
 # Do the thing
 #
-curl --silent ${curl_header_flag} \
-  --request "${action}" \
-  --header "Authorization: token ${token}" \
-  --header "Content-Type: application/json" \
-  --data "@${payload}" \
-  --url "$(urlencode "https://api.github.com${url}")"
+if ${paginate}; then
+  rm /tmp/gh.*.json &> /dev/null \
+    || true
+
+  curl --silent --include \
+    --request "${action}" \
+    --header "Authorization: token ${token}" \
+    --header "Content-Type: application/json" \
+    --data "@${payload}" \
+    --url "$(urlencode "https://api.github.com${url}?per_page=100")" \
+    | tee >( \
+      header=$(sed -e '1,\_^\r_!d')
+      cat - > /dev/null
+
+      lastPage="$(
+        <<< "${header}" \
+          sed -e '\_^Link:_!d' \
+            | tr '<' $'\n' \
+            | sed -e '\_last_!d' \
+                  -e 's_.*page=__g' \
+                  -e 's_>.*__g'
+      )"
+      [ -n "${lastPage}" ] || lastPage=1
+        
+
+      pidList=""
+      for page in $(seq 2 "${lastPage}"); do
+        > "/tmp/gh.${page}.json" \
+          curl --silent \
+            --request "${action}" \
+            --header "Authorization: token ${token}" \
+            --header "Content-Type: application/json" \
+            --data "@${payload}" \
+            --url "$(urlencode "https://api.github.com${url}?per_page=100&page=${page}")" &
+
+        pidList="${pidList} $!"
+      done
+
+      wait ${pidList}
+
+    ) \
+      | sed -e '1,\_^\r_d' > "/tmp/gh.1.json"
+
+
+    fileList="$(
+      find '/tmp' -name 'gh.*.json' 2>/dev/null \
+        | sort \
+        | paste -s -d' ' \
+        || true
+    )"
+
+    jq -s '.[]' ${fileList}
+
+    rm /tmp/gh.*.json &> /dev/null \
+      || true
+else
+  curl --silent ${curl_header_flag} \
+    --request "${action}" \
+    --header "Authorization: token ${token}" \
+    --header "Content-Type: application/json" \
+    --data "@${payload}" \
+    --url "$(urlencode "https://api.github.com${url}")"
+fi
