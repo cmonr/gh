@@ -4,7 +4,7 @@
 set -o pipefail
 
 readonly self_name=${0##*/}
-readonly self_version="0.0.2"
+readonly self_version="0.1.0"
 
 usage()
 {
@@ -80,25 +80,15 @@ fetch_stats=false
 # Parse user parameters
 for arg in "$@"; do
   case "${arg}" in
-    --help | -h )
-      usage
-      ;;
+    --help | -h ) usage; ;;
 
-    --version )
-      version
-      ;;
+    --version ) version; ;;
 
-    --paginate | -p )
-      paginate=true
-      ;;
+    --paginate | -p ) paginate=true; ;;
 
-    --include-headers | -i )
-      curl_header_flag="--include"
-      ;;
+    --include-headers | -i ) curl_header_flag="--include"; ;;
 
-    --stats | -s )
-      fetch_stats=true
-      ;;
+    --stats | -s ) fetch_stats=true; ;;
 
     --* | -* )
       die "Invalid argument: ${arg}"
