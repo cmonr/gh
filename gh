@@ -133,13 +133,19 @@ if ${paginate}; then
 fi
 
 
-# Source GitHub token from ~/.netrc
-token=$(
-  tr '\n' ' ' < ~/.netrc \
-    | tr -s ' ' \
-    | grep "machine github.com" \
-    | cut -d' ' -f6 \
-)
+# Source GitHub token 
+#  Either from env or .netrc file
+token="${GH_OAUTH_TOKEN:-}"
+[ -n "${token}" ] \
+  || token="$(
+      tr '\n' ' ' < ~/.netrc \
+        | tr -s ' ' \
+        | grep "machine github.com" \
+        | cut -d' ' -f6
+      )"
+[ -n "${token}" ] \
+  || die "Unable to source GitHub OAuth Token ('GH_OAUTH_TOKEN')."
+
 
 # Verify key parameters are not empty
 [ -z "${url}" ] && die "Url not provided"
