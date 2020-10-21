@@ -44,7 +44,7 @@ Requires a .netrc file for credentials.
 
 Examples:
   ${self_name} get /user
-  ${self_name} post /repos/:owner/:repo/issues/:issue_number/comments
+  ${self_name} post /repos/:owner/:repo/issues/:issue_number/comments \\
     '{"body": "I am a comment."}'
   ${self_name} -i --stats
 
@@ -110,7 +110,7 @@ done
 
 # Only fetch stats if no other action is specified.
 if ${fetch_stats} ; then
-  [[ ! -z "${action}" ]] && usage 1
+  [[ -n "${action}" ]] && usage 1
 
   action="get"
   url="/rate_limit"
@@ -138,18 +138,18 @@ token="${GH_OAUTH_TOKEN:-}"
 
 
 # Verify key parameters are not empty
-[ -z "${url}" ] && die "Url not provided"
-[ -z "${action}" ] && die "Action not provided"
-[ -z "${token}" ] && die "Could not source GitHub token."
+[ -n "${url}" ] || die "Url not provided"
+[ -n "${action}" ] || die "Action not provided"
+[ -n "${token}" ] || die "Could not source GitHub token."
 
 
 # Validate action/payload combinations
 case "${action}" in
   get | delete )
-    [[ ! -z "${payload}" ]] && die "Payload not used with ${action}: '${payload}'"
+    [[ -z "${payload}" ]] || die "Payload not used with ${action}: '${payload}'"
     ;;
   post | patch | put )
-    [[ -z "${payload}" ]] && die "Payload for ${action} not provided"
+    [[ -n "${payload}" ]] || die "Payload for ${action} not provided"
     ;;
   *)
     die "Error. Unknown action: ${action}"
@@ -157,7 +157,7 @@ esac
 
 # Normalize variables
 action=$(tr '[:lower:]' '[:upper:]' <<< "${action}")
-url=$(sed 's_.*github.com/_/_' <<< "${url}")
+url="/${url#*github.com/}"
 
 
 #
@@ -202,6 +202,7 @@ if ${paginate}; then
         pidList="${pidList} $!"
       done
 
+      # shellcheck disable=SC2086
       wait ${pidList}
 
     ) \
@@ -215,6 +216,7 @@ if ${paginate}; then
         || true
     )"
 
+    # shellcheck disable=SC2086
     jq -s '.[]' ${fileList}
 else
   curl --silent ${curl_header_flag} \
