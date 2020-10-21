@@ -130,7 +130,7 @@ token="${GH_OAUTH_TOKEN:-}"
   || token="$(
       tr '\n' ' ' < ~/.netrc \
         | tr -s ' ' \
-        | grep "machine github.com" \
+        | sed 's_.*machine github.com_machine github.com_g' \
         | cut -d' ' -f6
       )"
 [ -n "${token}" ] \
