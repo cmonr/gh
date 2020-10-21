@@ -1,7 +1,7 @@
-#!/bin/bash -euf
+#!/usr/bin/env bash
 # Author: Cruz Monrreal II
 
-set -o pipefail
+set -eufo pipefail
 
 readonly self_name="${0##*/}"
 readonly self_version="0.1.0"
