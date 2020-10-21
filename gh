@@ -3,7 +3,7 @@
 
 set -o pipefail
 
-readonly self_name=${0##*/}
+readonly self_name="${0##*/}"
 readonly self_version="0.1.0"
 
 usage()
