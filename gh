@@ -4,7 +4,7 @@
 set -eufo pipefail
 
 readonly self_name="${0##*/}"
-readonly self_version="0.1.0"
+readonly self_version="0.1.1"
 
 usage()
 {
@@ -157,7 +157,8 @@ esac
 
 # Normalize variables
 action=$(tr '[:lower:]' '[:upper:]' <<< "${action}")
-url="/${url#*github.com/}"
+url="${url#*github.com}"
+
 
 
 #
