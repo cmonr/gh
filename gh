@@ -54,6 +54,7 @@ EOF
 }
 
 version() { printf "%s\n" "${self_name} ${self_version}"; exit 0; }
+info() { printf "[I] %s\n" "${1}" 1>&2; }
 die() { printf "[E] %s\n" "${1}" 1>&2; exit 1; }
 
 urlencode()
@@ -145,7 +146,8 @@ token="${GH_OAUTH_TOKEN:-}"
 
 # Validate action/payload combinations
 case "${action}" in
-  get | delete )
+  get ) ;;
+  delete )
     [[ -z "${payload}" ]] || die "Payload not used with ${action}: '${payload}'"
     ;;
   post | patch | put )
@@ -164,66 +166,82 @@ url="${url#*github.com}"
 #
 # Do the thing
 #
-
-cleanup() { find '/tmp' -name 'gh.*.json' -exec rm {} \; 2>/dev/null || true; }
-trap cleanup EXIT
+cleanup() {
+  rm "/tmp/gh.headerFifo" &>/dev/null || true
+  find '/tmp/' -name 'gh.*.json' -exec rm {} \; 2>/dev/null || true
+}
+onCtrlC() { cleanup; exit 0; }
+trap onCtrlC SIGINT
 
 if ${paginate}; then
-  curl --silent --include \
+  [ ! -e "/tmp/gh.headerFifo}" ] \
+    || die "Header fifo detected.
+  Is anotehr instance of '${self_name} -p' running?"
+
+  mkfifo "/tmp/gh.headerFifo"
+
+  curl --silent \
+    --dump-header "/tmp/gh.headerFifo" \
     --request "${action}" \
     --header "Authorization: token ${token}" \
     --header "Content-Type: application/json" \
     --data "@${payload}" \
-    --url "$(urlencode "https://api.github.com${url}?per_page=100")" \
-    | tee >( \
-      header=$(sed -e '1,\_^\r_!d')
-      cat - > /dev/null
+    --url "$(urlencode "https://api.github.com${url}?per_page=10")" \
+      > "/tmp/gh.1.json" &
 
-      lastPage="$(
-        <<< "${header}" \
-          sed -e '\_^Link:_!d' \
-            | tr '<' $'\n' \
-            | sed -e '\_last_!d' \
-                  -e 's_.*page=__g' \
-                  -e 's_>.*__g'
-      )"
-      [ -n "${lastPage}" ] || lastPage=1
-        
+  pidList=$!
 
-      pidList=""
-      for page in $(seq 2 "${lastPage}"); do
-        > "/tmp/gh.${page}.json" \
-          curl --silent \
-            --request "${action}" \
-            --header "Authorization: token ${token}" \
-            --header "Content-Type: application/json" \
-            --data "@${payload}" \
-            --url "$(urlencode "https://api.github.com${url}?per_page=100&page=${page}")" &
-
-        pidList="${pidList} $!"
-      done
-
-      # shellcheck disable=SC2086
-      wait ${pidList}
-
-    ) \
-      | sed -e '1,\_^\r_d' > "/tmp/gh.1.json"
-
-
-    fileList="$(
-      find '/tmp' -name 'gh.*.json' 2>/dev/null \
-        | sort \
-        | paste -s -d' ' \
+  lastPage="$(
+    < "/tmp/gh.headerFifo" \
+      sed -e '\_^Link:_!d' \
+        | tr '<' $'\n' \
+        | sed -e '\_last_!d' \
+              -e 's_.*page=__g' \
+              -e 's_>.*__g' \
         || true
-    )"
+  )"
+  rm "/tmp/gh.headerFifo"
 
-    # shellcheck disable=SC2086
-    jq -s '.[]' ${fileList}
+  [ -n "${lastPage}" ] || lastPage=1
+    
+  if [ "${lastPage}" -gt 1 ] ; then
+    for page in $(seq 2 "${lastPage}"); do
+      
+      curl --silent \
+        --request "${action}" \
+        --header "Authorization: token ${token}" \
+        --header "Content-Type: application/json" \
+        --data "@${payload}" \
+        --url "$(urlencode "https://api.github.com${url}?per_page=10&page=${page}")" \
+          > "/tmp/gh.${page}.json" &
+
+      pidList="${pidList} $!"
+    done
+  fi
+
+  trap cleanup EXIT
+
+
+  # shellcheck disable=SC2086
+  [ -z "${pidList}" ] || wait ${pidList}
+  
+
+  fileList="$(
+    find '/tmp' -name 'gh.*.json' 2>/dev/null \
+      | sort \
+      | paste -s -d' ' \
+      || true
+  )"
+
+  [ -n "${fileList}" ] || die "Unknown error. The files disappeared before merging!"
+
+  # shellcheck disable=SC2086
+  jq -s '.[]' ${fileList}
 else
   curl --silent ${curl_header_flag} \
     --request "${action}" \
     --header "Authorization: token ${token}" \
     --header "Content-Type: application/json" \
     --data "@${payload}" \
-    --url "$(urlencode "https://api.github.com${url}")"
+    --url "$(urlencode "https://api.github.com${url}"?per_page=100)"
 fi
