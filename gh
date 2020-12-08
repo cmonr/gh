@@ -71,6 +71,7 @@ urlencode()
 # Set variables
 action=""; 
 url=""
+urlParams=""
 payload=""
 
 paginate=false
@@ -161,6 +162,16 @@ esac
 action=$(tr '[:lower:]' '[:upper:]' <<< "${action}")
 url="${url#*github.com}"
 
+# Extract extra params in the URL for reinsertion
+tmpUrl="${url%%\?*}"
+if [ "${url}" == "${tmpUrl}" ]; then
+  urlParams="per_page=100"
+else
+  urlParams="${url/#${tmpUrl}\?/}&per_page=100"
+  url="${tmpUrl}"
+fi
+
+
 
 #
 # Do the thing
@@ -175,7 +186,7 @@ trap onCtrlC SIGINT
 if ${paginate}; then
   [ ! -e "/tmp/gh.headerFifo}" ] \
     || die "Header fifo detected.
-  Is anotehr instance of '${self_name} -p' running?"
+  Is another instance of '${self_name} -p' running?"
 
   mkfifo "/tmp/gh.headerFifo"
 
@@ -185,7 +196,7 @@ if ${paginate}; then
     --header "Authorization: token ${token}" \
     --header "Content-Type: application/json" \
     --data "@${payload}" \
-    --url "$(urlencode "https://api.github.com${url}?per_page=10")" \
+    --url "$(urlencode "https://api.github.com${url}?${urlParams}")" \
       > "/tmp/gh.1.json" &
 
   pidList=$!
@@ -211,7 +222,7 @@ if ${paginate}; then
         --header "Authorization: token ${token}" \
         --header "Content-Type: application/json" \
         --data "@${payload}" \
-        --url "$(urlencode "https://api.github.com${url}?per_page=10&page=${page}")" \
+        --url "$(urlencode "https://api.github.com${url}?${urlParams}&page=${page}")" \
           > "/tmp/gh.${page}.json" &
 
       pidList="${pidList} $!"
@@ -243,5 +254,5 @@ else
     --header "Authorization: token ${token}" \
     --header "Content-Type: application/json" \
     --data "@${payload}" \
-    --url "$(urlencode "https://api.github.com${url}"?per_page=100)"
+    --url "$(urlencode "https://api.github.com${url}?${urlParams}")"
 fi
