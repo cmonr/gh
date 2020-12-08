@@ -195,7 +195,7 @@ if ${paginate}; then
     --request "${action}" \
     --header "Authorization: token ${token}" \
     --header "Content-Type: application/json" \
-    --data "@${payload}" \
+    --data "${payload}" \
     --url "$(urlencode "https://api.github.com${url}?${urlParams}")" \
       > "/tmp/gh.1.json" &
 
@@ -221,7 +221,7 @@ if ${paginate}; then
         --request "${action}" \
         --header "Authorization: token ${token}" \
         --header "Content-Type: application/json" \
-        --data "@${payload}" \
+        --data "${payload}" \
         --url "$(urlencode "https://api.github.com${url}?${urlParams}&page=${page}")" \
           > "/tmp/gh.${page}.json" &
 
@@ -253,6 +253,6 @@ else
     --request "${action}" \
     --header "Authorization: token ${token}" \
     --header "Content-Type: application/json" \
-    --data "@${payload}" \
+    --data "${payload}" \
     --url "$(urlencode "https://api.github.com${url}?${urlParams}")"
 fi
