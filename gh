@@ -235,7 +235,8 @@ if ${paginate}; then
   [ -n "${fileList}" ] || die "Unknown error. The files disappeared before merging!"
 
   # shellcheck disable=SC2086
-  jq -s '.[]' ${fileList}
+  jq -s '.[]' ${fileList} \
+    | jq -n '[inputs] | add'
 else
   curl --silent ${curl_header_flag} \
     --request "${action}" \
