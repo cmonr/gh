@@ -146,11 +146,11 @@ token="${GH_OAUTH_TOKEN:-}"
 
 # Validate action/payload combinations
 case "${action}" in
-  get ) ;;
+  get | patch ) ;;
   delete )
     [[ -z "${payload}" ]] || die "Payload not used with ${action}: '${payload}'"
     ;;
-  post | patch | put )
+  post | put )
     [[ -n "${payload}" ]] || die "Payload for ${action} not provided"
     ;;
   *)
@@ -160,7 +160,6 @@ esac
 # Normalize variables
 action=$(tr '[:lower:]' '[:upper:]' <<< "${action}")
 url="${url#*github.com}"
-
 
 
 #
